@@ -1,0 +1,4 @@
+#!/bin/bash
+
+cp ../code/restart_bpch.exe .
+./restart_bpch.exe

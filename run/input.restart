@@ -1,0 +1,19 @@
+Generate GEOS-Chem adjoint restart bpch file
+------------------------+------------------------------------------------------
+%%% CONTROL MENU %%%    :
+YYYYMMDD, hhmmss        : 20171221 000000
+Input restart file      : restart.geos5.YYYYMMDDhh
+Run directory           : ./
+------------------------+------------------------------------------------------
+%%% INPUT GRID MENU %%% :
+In grid resolution      : 4.0x5.0
+In number of levels     : 72
+------------------------+------------------------------------------------------
+%%% OUTPUT GRID MENU %%%:
+Out grid resolution     : 2.0x2.5
+Out longitude min/max   : -180.0 180.0
+Out latitude  min/max   :  -90.0  90.0
+ Half-sized polar boxes?: T
+Out number of levels    : 72
+Out nested grid?        : F
+------------------------+------------------------------------------------------
