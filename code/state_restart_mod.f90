@@ -37,7 +37,7 @@ module state_restart_mod
 !
 !------------------------------------------------------------------------------
 !
- subroutine cleanup_state_restart(restart_state)
+ subroutine cleanup_state_restart( restart_state )
 
      implicit none
 

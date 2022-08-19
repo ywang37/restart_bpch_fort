@@ -3,6 +3,7 @@ program main
  use grid_opt_mod
  use input_mod,             only : read_input_file
  use input_opt_mod
+ use state_restart_mod
  use time_mod,              only : SYSTEM_TIMESTAMP
 
 
@@ -12,6 +13,8 @@ program main
  type(OptInput)          :: Input_Opt   ! Input Options object
 
  type(OptGrid)           :: in_grid_opt, out_grid_opt
+
+ type(RestStat)          :: in_restart_state, out_restart_state
 
 
  ! read input file
@@ -23,6 +26,9 @@ program main
  call set_grid_opt( input_opt, out_grid_Opt, 'out' )
 
 
+ ! set restart
+ call set_state_restart( in_grid_opt,  in_restart_state  )
+ call set_state_restart( out_grid_opt, out_restart_state )
 
 
 
@@ -30,8 +36,9 @@ program main
 
 
 
-
-
+ ! cleanup
+ call cleanup_state_restart( in_restart_state  )
+ call cleanup_state_restart( out_restart_state )
 
  ! System time stamp
  WRITE( 6, 99  ) SYSTEM_TIMESTAMP()
