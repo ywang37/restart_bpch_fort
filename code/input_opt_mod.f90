@@ -36,8 +36,12 @@ module input_opt_mod
 
 
  contains
-
+!
+!------------------------------------------------------------------------------
+!
  subroutine set_input_opt( Input_Opt )
+
+     implicit none
 
      type(OptInput), intent(inout) :: Input_Opt
 
@@ -47,8 +51,12 @@ module input_opt_mod
 
 
  end subroutine set_input_opt
-
+!
+!------------------------------------------------------------------------------
+! 
  subroutine cleanup_input_opt
  end subroutine cleanup_input_opt
-
+!
+!------------------------------------------------------------------------------
+!
 end module input_opt_mod

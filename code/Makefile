@@ -60,6 +60,7 @@ OBJ_MODULES = tool_kit_mod.o        \
 				  file_mod.o            \
 				  input_opt_mod.o       \
 				  input_mod.o           \
+				  grid_opt_mod.o        \
 				  cleanup.o
 
 # Executables
@@ -73,6 +74,7 @@ cleanup.o                      : cleanup.f90
 error_mod.o                    : error_mod.f
 file_mod.o                     : file_mod.f
 grid_mod.o                     : grid_mod.f
+grid_opt_mod.o                 : grid_opt_mod.f90
 ifort_errmsg.o                 : ifort_errmsg.f
 input_mod.o                    : input_mod.f90
 input_opt_mod.o                : input_opt_mod.f90
