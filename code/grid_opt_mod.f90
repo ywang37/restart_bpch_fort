@@ -32,7 +32,7 @@ module grid_opt_mod
 !
 !------------------------------------------------------------------------------
 !
- subroutine set_grid_opt( input_opt, grid_Opt, grid_in_out )
+ subroutine set_grid_opt( input_opt, grid_opt, grid_in_out )
 
      use error_mod,          only : error_stop
      use input_opt_mod,      only : OptInput
