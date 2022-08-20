@@ -5,7 +5,7 @@ module grid_opt_mod
 
  public :: set_grid_opt
  public :: cleanup_grid_opt
-
+ public :: res4, res2
 
  ! 
  character(len=7), parameter   :: res4 = '4.0x5.0'
@@ -21,6 +21,8 @@ module grid_opt_mod
 
      integer                  :: iipar, jjpar, llpar
      integer                  :: iglob, jglob, lglob
+
+     integer                  :: i0, j0
 
      real*8                   :: disize, djsize
 
@@ -56,6 +58,9 @@ module grid_opt_mod
          grid_opt%half_polar = .true.
          grid_opt%is_nested  = .false.
 
+         grid_opt%i0 = 0
+         grid_opt%j0 = 0
+
      else if ( grid_in_out == 'out' ) then
 
          grid_opt%h_res = input_opt%out_h_res
@@ -68,6 +73,9 @@ module grid_opt_mod
 
          grid_opt%half_polar = input_opt%out_half_polar
          grid_opt%is_nested  = input_opt%out_is_nested
+
+         grid_opt%i0 = input_opt%out_i0
+         grid_opt%j0 = input_opt%out_j0
 
      else
          call error_stop('in_out_error', 'grid_opt_mod: set_grid_opt')

@@ -72,6 +72,9 @@
       !=================================================================
       ! MODULE VARIABLES
       !=================================================================
+      INTEGER, PARAMETER :: IU_RST     = 1
+      INTEGER, PARAMETER :: IU_FILE    = 65
+
       CHARACTER(LEN=255) :: in_rst_f
       CHARACTER(LEN=255) :: out_rst_f
 
@@ -397,6 +400,8 @@
       !=================================================================
       ! CLOSE_FILES begins here!
       !=================================================================
+      CLOSE( IU_RST     )
+      CLOSE( IU_FILE    )
 
       ! Return to calling program
       END SUBROUTINE CLOSE_FILES

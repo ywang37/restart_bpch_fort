@@ -86,6 +86,9 @@ MODULE input_mod
     IF ( INDEX( LINE, 'CONTROL MENU'   ) > 0 ) THEN
         CALL READ_CONTROL_MENU( Input_Opt )
 
+    else if ( index( line, 'TRACER MENU' ) > 0) then
+        call read_tracer_menu( Input_Opt )
+
     ELSE IF ( INDEX( LINE, 'INPUT GRID MENU' ) > 0 ) THEN
         CALL read_input_grid_menu( Input_Opt )
 
@@ -109,7 +112,7 @@ MODULE input_mod
 !
 !------------------------------------------------------------------------------
 !
-SUBROUTINE read_control_menu( Input_Opt )
+ SUBROUTINE read_control_menu( Input_Opt )
 
  ! References to F90 modules
  use time_mod,      only : expand_date
@@ -161,7 +164,42 @@ SUBROUTINE read_control_menu( Input_Opt )
 !
 !------------------------------------------------------------------------------
 !
-SUBROUTINE read_input_grid_menu( Input_Opt )
+ SUBROUTINE read_tracer_menu( Input_Opt )
+
+ ! References to F90 modules
+ use error_mod,     only : error_stop
+ use input_opt_mod, only : OptInput
+
+ type(OptInput), intent(inout) :: Input_Opt
+
+ ! Local variables
+ INTEGER            :: N
+ CHARACTER(LEN=255) :: subStrs(MAXDIM)
+
+ !=========================================================
+ ! read_input_grid_menu begins here
+ !=========================================================
+
+ CALL split_one_line( subStrs, N, 1, 'read_tracer_menu:1' )
+ READ( subStrs(1:N), * ) Input_Opt%n_tracers
+
+ ! Separator line
+ CALL split_one_line( subStrs, N, 1, 'read_tracer_menu:2' )
+
+ !=========================================================
+ ! Print to screen
+ !=========================================================
+ WRITE( 6, '(/,a)') '%%% TRACER MENU %%%'
+ WRITE( 6, '(  a)') repeat( '-', 48 )
+ WRITE( 6, 111    ) 'Number of Tracers       : ', Input_Opt%n_tracers
+
+ 111 format( a, i2)
+
+ END SUBROUTINE read_tracer_menu
+!
+!------------------------------------------------------------------------------
+!
+ SUBROUTINE read_input_grid_menu( Input_Opt )
 
  ! References to F90 modules
  use error_mod,     only : error_stop
@@ -206,7 +244,7 @@ SUBROUTINE read_input_grid_menu( Input_Opt )
 !
 !------------------------------------------------------------------------------
 !
-SUBROUTINE read_output_grid_menu( Input_Opt )
+ SUBROUTINE read_output_grid_menu( Input_Opt )
 
  ! References to F90 modules
  use error_mod,     only : error_stop
@@ -241,8 +279,11 @@ SUBROUTINE read_output_grid_menu( Input_Opt )
  CALL split_one_line( subStrs, N, 1, 'read_output_grid_menu:6' )
  READ( subStrs(1:N), * ) Input_Opt%out_is_nested
 
+ CALL split_one_line( subStrs, N, 2, 'read_output_grid_menu:7' )
+ READ( subStrs(1:N), * ) Input_Opt%out_i0, Input_Opt%out_j0
+
  ! Separator line
- CALL split_one_line( subStrs, N, 1, 'read_ouput_grid_menu:7' )
+ CALL split_one_line( subStrs, N, 1, 'read_ouput_grid_menu:8' )
 
  !=========================================================
  ! Print to screen
@@ -262,11 +303,13 @@ SUBROUTINE read_output_grid_menu( Input_Opt )
      call error_stop('error', 'output_mod.f90: read_input_grid_menu')
  end if
  write( 6, 112    ) 'Out nested grid?        : ', Input_Opt%out_is_nested
+ write( 6, 114    ) 'Out Glo-offsets I0, J0  : ', Input_Opt%out_i0, Input_Opt%out_j0
 
  110 FORMAT( a, a )
  111 format( a, f6.1, 1x, f6.1)
  112 FORMAT( a, l )
  113 FORMAT( a, i2 )
+ 114 format( a, 2i6 )
 
  END SUBROUTINE read_output_grid_menu
 !

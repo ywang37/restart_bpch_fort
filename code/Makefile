@@ -62,6 +62,9 @@ OBJ_MODULES = tool_kit_mod.o        \
 				  input_mod.o           \
 				  grid_opt_mod.o        \
 				  state_restart_mod.o   \
+				  bpch2_mod.o           \
+				  restart_mod.o         \
+				  regrid_mod.o          \
 				  cleanup.o
 
 # Executables
@@ -83,6 +86,7 @@ inquireMod.o                   : inquireMod.F90
 julday_mod.o                   : julday_mod.f
 main.o                         : main.f90
 parameter_mod.o                : parameter_mod.f90
+regrid_mod.o                   : regrid_mod.f90
 restart_mod.o                  : restart_mod.f
 state_restart_mod.o            : state_restart_mod.f90
 time_mod.o                     : time_mod.f

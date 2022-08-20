@@ -16,6 +16,11 @@ module input_opt_mod
      character(len=255)       :: in_rst_f, out_rst_f 
      character(len=255)       :: run_dir
 
+     !------------
+     ! TRACER MENU
+     !------------
+     integer                  :: n_tracers
+
      !----------------
      ! INPUT GRID MENU
      !----------------
@@ -31,6 +36,7 @@ module input_opt_mod
      logical                  :: out_half_polar
      integer                  :: out_n_layer
      logical                  :: out_is_nested
+     integer                  :: out_i0, out_j0
 
  end type OptInput
 

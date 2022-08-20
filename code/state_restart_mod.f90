@@ -8,7 +8,8 @@ module state_restart_mod
 
  type, public :: RestStat
 
-     real*8,  allocatable     :: tracer(:,:,:)
+     real*8,  allocatable     :: stt(:,:,:,:)
+     real*8                   :: tau0, tau1
 
  end type RestStat
 
@@ -19,19 +20,19 @@ module state_restart_mod
 !
 !------------------------------------------------------------------------------
 !
- subroutine set_state_restart( grid_opt, restart_state )
+ subroutine set_state_restart( input_opt, grid_opt, restart_state )
 
+     use input_opt_mod,        only : OptInput
      use grid_opt_mod,         only : OptGrid
 
      implicit none
 
+     type(OptInput),    intent(in)    :: input_opt
      type(OptGrid),     intent(in)    :: grid_opt
      type(RestStat),    intent(inout) :: restart_state
 
-
-     allocate( restart_state%tracer(grid_opt%iipar, &
-         grid_opt%jjpar, grid_opt%llpar) )
-
+     allocate( restart_state%stt(grid_opt%iipar, &
+         grid_opt%jjpar, grid_opt%llpar, input_opt%n_tracers) )
 
  end subroutine
 !
@@ -43,7 +44,7 @@ module state_restart_mod
 
      type(RestStat),    intent(inout) :: restart_state
 
-     deallocate( restart_state%tracer )
+     deallocate( restart_state%stt )
 
  end subroutine
 !

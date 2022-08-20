@@ -65,19 +65,14 @@
       ! ... except these routines
       PUBLIC  :: MAKE_RESTART_FILE
       PUBLIC  :: READ_RESTART_FILE
-!      PUBLIC  :: SET_RESTART
-!      PUBLIC  :: MAKE_CSPEC_FILE
-!      PUBLIC  :: READ_CSPEC_FILE
-      ! adj_group (dkh, ks, mak, cs, 06/08/09)
-      PUBLIC  :: CHECK_DIMENSIONS
 
 
 
       !=================================================================
       ! MODULE VARIABLES
       !=================================================================
-      CHARACTER(LEN=255) :: INPUT_RESTART_FILE
-      CHARACTER(LEN=255) :: OUTPUT_RESTART_FILE
+!      CHARACTER(LEN=255) :: INPUT_RESTART_FILE
+!      CHARACTER(LEN=255) :: OUTPUT_RESTART_FILE
 
       !=================================================================
       ! MODULE ROUTINES -- follow below the "CONTAINS" statement
@@ -86,7 +81,8 @@
 
 !------------------------------------------------------------------------------
 
-      SUBROUTINE MAKE_RESTART_FILE( YYYYMMDD, HHMMSS, TAU )
+      SUBROUTINE MAKE_RESTART_FILE( input_opt, out_restart_state, 
+     &        out_grid_opt )
 !
 !******************************************************************************
 !  Subroutine MAKE_RESTART_FILE creates GEOS-CHEM restart files of tracer
@@ -125,28 +121,30 @@
 !  (12) Add TAU to the argument list (bmy, 12/16/05)
 !******************************************************************************
 !
-      ! References to F90 modules
-      USE BPCH2_MOD,   ONLY : BPCH2,         GET_MODELNAME
-      USE BPCH2_MOD,   ONLY : GET_HALFPOLAR, OPEN_BPCH2_FOR_WRITE
-!      USE DAO_MOD,     ONLY : AD
+!      ! References to F90 modules
+      USE BPCH2_MOD,   ONLY : BPCH2
+      USE BPCH2_MOD,   ONLY : OPEN_BPCH2_FOR_WRITE
       USE ERROR_MOD,   ONLY : DEBUG_MSG
       USE FILE_MOD,    ONLY : IU_RST,        IOERROR
-      USE GRID_MOD,    ONLY : GET_XOFFSET,   GET_YOFFSET
-!      USE LOGICAL_MOD, ONLY : LPRT
-      USE TIME_MOD,    ONLY : EXPAND_DATE
-      USE TRACER_MOD,  ONLY : STT,           N_TRACERS,  TCVV
 
-#     include "CMN_SIZE"   ! Size parameters
+      use grid_opt_mod,        only : OptGrid
+      use input_opt_mod,       only : OptInput
+      use state_restart_mod,   only : RestStat
 
       ! Arguments
-      INTEGER, INTENT(IN)  :: YYYYMMDD, HHMMSS
-      REAL*8,  INTENT(IN)  :: TAU
+      type(OptInput),   intent(in)    :: input_opt
+      type(RestStat),   intent(in)    :: out_restart_state
+      type(OptGrid),    intent(in)    :: out_grid_opt
 
       ! Local Variables
       INTEGER              :: I,    I0, IOS, J,  J0, L, N
       INTEGER              :: YYYY, MM, DD,  HH, SS
-      REAL*4               :: TRACER(IIPAR,JJPAR,LLPAR)
-      CHARACTER(LEN=255)   :: FILENAME
+      integer              :: iipar, jjpar, llpar
+      character(len=255)   :: filename
+      integer              :: n_tracers
+
+      real*4, allocatable  :: tracer(:,:,:)
+
 
       ! For binary punch file, version 2.0
       REAL*4               :: LONRES, LATRES
@@ -158,40 +156,51 @@
       CHARACTER(LEN=40)    :: UNIT
       CHARACTER(LEN=40)    :: RESERVED = ''
       CHARACTER(LEN=80)    :: TITLE
+      real*8               :: tau0, tau1
 
       !=================================================================
       ! MAKE_RESTART_FILE begins here!
       !=================================================================
+
+      n_tracers = input_opt%n_tracers
+
+      tau0 = out_restart_state%tau0
+      tau1 = out_restart_state%tau1
+
+      ! Initialize some variables
+      iipar = size(out_restart_state%stt, 1)
+      jjpar = size(out_restart_state%stt, 2)
+      llpar = size(out_restart_state%stt, 3)
+      allocate(tracer(iipar,jjpar,llpar))
+      TRACER(:,:,:) = 0e0
 
       ! Define variables for BINARY PUNCH FILE OUTPUT
       TITLE    = 'GEOS-CHEM Restart File: ' //
      &           'Instantaneous Tracer Concentrations (v/v)'
       UNIT     = 'v/v'
       CATEGORY = 'IJ-AVG-$'
-      LONRES   = DISIZE
-      LATRES   = DJSIZE
+      LONRES   = out_grid_opt%disize
+      LATRES   = out_grid_opt%djsize
 
-      ! Call GET_MODELNAME to return the proper model name for
-      ! the given met data being used (bmy, 6/22/00)
-      MODELNAME = GET_MODELNAME()
+      MODELNAME = 'GEOS'
 
-      ! Call GET_HALFPOLAR to return the proper value
-      ! for either GCAP or GEOS grids (bmy, 6/28/05)
-      HALFPOLAR = GET_HALFPOLAR()
+      if (out_grid_opt%half_polar) then
+          HALFPOLAR = 1
+      else
+          HALFPOLAR = 0
+      end if
 
       ! Get the nested-grid offsets
-      I0 = GET_XOFFSET( GLOBAL=.TRUE. )
-      J0 = GET_YOFFSET( GLOBAL=.TRUE. )
+      I0 = out_grid_opt%i0
+      J0 = out_grid_opt%j0
 
       !=================================================================
       ! Open the restart file for output -- binary punch format
       !=================================================================
 
-      ! Copy the output restart file name into a local variable
-      FILENAME = TRIM( OUTPUT_RESTART_FILE )
+       ! Copy the output restart file name into a local variable
+       filename = input_opt%out_rst_f
 
-      ! Replace YYYY, MM, DD, HH tokens in FILENAME w/ actual values
-      CALL EXPAND_DATE( FILENAME, YYYYMMDD, HHMMSS )
 
       WRITE( 6, 100 ) TRIM( FILENAME )
  100  FORMAT( '     - MAKE_RESTART_FILE: Writing ', a )
@@ -207,16 +216,15 @@
          DO L = 1, LLPAR
          DO J = 1, JJPAR
          DO I = 1, IIPAR
-            TRACER(I,J,L) = STT(I,J,L,N)
+            TRACER(I,J,L) = out_restart_state%STT(I,J,L,N)
          ENDDO
          ENDDO
          ENDDO
 
-         ! Convert STT from [kg] to [v/v] mixing ratio
          ! and store in temporary variable TRACER
          CALL BPCH2( IU_RST,    MODELNAME, LONRES,    LATRES,
      &               HALFPOLAR, CENTER180, CATEGORY,  N,
-     &               UNIT,      TAU,       TAU,       RESERVED,
+     &               UNIT,      TAU0,      TAU1,      RESERVED,
      &               IIPAR,     JJPAR,     LLPAR,     I0+1,
      &               J0+1,      1,         TRACER )
       ENDDO
@@ -224,15 +232,12 @@
       ! Close file
       CLOSE( IU_RST )
 
-!      !### Debug
-!      IF ( LPRT ) CALL DEBUG_MSG( '### MAKE_RESTART_FILE: wrote file' )
-
       ! Return to calling program
       END SUBROUTINE MAKE_RESTART_FILE
-
+!
 !------------------------------------------------------------------------------
 
-      SUBROUTINE READ_RESTART_FILE( YYYYMMDD, HHMMSS )
+      SUBROUTINE READ_RESTART_FILE( input_opt, in_restart_state )
 !
 !******************************************************************************
 !  Subroutine READ_RESTART_FILE initializes GEOS-CHEM tracer concentrations
@@ -276,26 +281,26 @@
 !******************************************************************************
 !
       ! References to F90 modules
-      USE BPCH2_MOD,   ONLY : OPEN_BPCH2_FOR_READ
-!      USE DAO_MOD,     ONLY : AD
-      USE ERROR_MOD,   ONLY : DEBUG_MSG
-      USE FILE_MOD,    ONLY : IU_RST,      IOERROR
-!      USE LOGICAL_MOD, ONLY : LSPLIT,      LPRT
-      USE TIME_MOD,    ONLY : EXPAND_DATE
-!      USE TRACER_MOD,  ONLY : N_TRACERS,   STT
-!      USE TRACER_MOD,  ONLY : TRACER_NAME, TRACER_MW_G
+      USE BPCH2_MOD,           ONLY : OPEN_BPCH2_FOR_READ
+      USE ERROR_MOD,           ONLY : DEBUG_MSG
+      USE FILE_MOD,            ONLY : IU_RST,      IOERROR
+      use input_opt_mod,       only : OptInput
+      use state_restart_mod,   only : RestStat
 
-#     include "CMN_SIZE"   ! Size parameters
 
       ! Arguments
-      INTEGER, INTENT(IN) :: YYYYMMDD, HHMMSS
+      type(OptInput),   intent(in)    :: input_opt
+      type(RestStat),   intent(inout) :: in_restart_state
 
       ! Local Variables
       INTEGER             :: I, IOS, J, L, N
-      INTEGER             :: NCOUNT(NNPAR)
-      REAL*4              :: TRACER(IIPAR,JJPAR,LLPAR)
       REAL*8              :: SUMTC
-      CHARACTER(LEN=255)  :: FILENAME
+      integer             :: iipar, jjpar, llpar
+      character(len=255)  :: filename
+
+      real*4, allocatable :: tracer(:,:,:)
+
+      logical             :: first
 
       ! For binary punch file, version 2.0
       INTEGER             :: NI,     NJ,     NL
@@ -314,18 +319,20 @@
       !=================================================================
 
       ! Initialize some variables
-      NCOUNT(:)     = 0
+      iipar = size(in_restart_state%stt, 1)
+      jjpar = size(in_restart_state%stt, 2)
+      llpar = size(in_restart_state%stt, 3)
+      allocate(tracer(iipar,jjpar,llpar))
       TRACER(:,:,:) = 0e0
+
+      first = .true.
 
       !=================================================================
       ! Open restart file and read top-of-file header
       !=================================================================
 
       ! Copy input file name to a local variable
-      FILENAME = TRIM( INPUT_RESTART_FILE )
-
-      ! Replace YYYY, MM, DD, HH tokens in FILENAME w/ actual values
-      CALL EXPAND_DATE( FILENAME, YYYYMMDD, HHMMSS )
+      filename = input_opt%in_rst_f
 
       ! Echo some input to the screen
       WRITE( 6, '(a)'   ) REPEAT( '=', 79 )
@@ -335,11 +342,6 @@
 
       ! Open the binary punch file for input
       CALL OPEN_BPCH2_FOR_READ( IU_RST, FILENAME )
-
-      ! Echo more output
-      WRITE( 6, 110 )
- 110  FORMAT( /, 'Min and Max of each tracer, as read from the file:',
-     &        /, '(in volume mixing ratio units: v/v)' )
 
       !=================================================================
       ! Read concentrations -- store in the TRACER array
@@ -359,6 +361,12 @@
      &        NI,       NJ,       NL,   IFIRST, JFIRST, LFIRST,
      &        NSKIP
 
+         if (first) then
+             in_restart_state%tau0 = ZTAU0
+             in_restart_state%tau1 = ZTAU1
+             first = .false.
+         end if
+
          IF ( IOS /= 0 ) CALL IOERROR( IOS,IU_RST,'read_restart_file:5')
 
          READ( IU_RST, IOSTAT=IOS )
@@ -373,206 +381,18 @@
          ! Only process concentration data (i.e. mixing ratio)
          IF ( CATEGORY(1:8) == 'IJ-AVG-$' ) THEN
 
-            ! Make sure array dimensions are of global size
-            ! (NI=IIPAR; NJ=JJPAR, NL=LLPAR), or stop the run
-            CALL CHECK_DIMENSIONS( NI, NJ, NL )
-
-!            ! Convert TRACER from [v/v] to [kg] and copy into STT array
-!            CALL COPY_STT( NTRACER, TRACER, NCOUNT )
+             !print*, 'NTRACER = ', NTRACER
+             in_restart_state%stt(:,:,:,NTRACER) = tracer(:,:,:)
 
          ENDIF
       ENDDO
-
-      !=================================================================
-      ! Examine data blocks, print totals, and return
-      !=================================================================
-
-      ! Check for missing or duplicate data blocks
-      CALL CHECK_DATA_BLOCKS( N_TRACERS, NCOUNT )
 
       ! Close file
       CLOSE( IU_RST )
-
-      ! Print totals atmospheric mass for each tracer
-      WRITE( 6, 120 )
- 120  FORMAT( /, 'Total atmospheric masses for each tracer: ' )
-
-      DO N = 1, N_TRACERS
-
-         ! For tracers in kg C, be sure to use correct unit string
-         IF ( INT( TRACER_MW_G(N) + 0.5 ) == 12 ) THEN
-            UNIT = 'kg C'
-         ELSE
-            UNIT = 'kg  '
-         ENDIF
-
-         ! Print totals
-         WRITE( 6, 130 ) N,                   TRACER_NAME(N),
-     &                   SUM( STT(:,:,:,N) ), ADJUSTL( UNIT )
- 130     FORMAT( 'Tracer ', i3, ' (', a10, ') ', es12.5, 1x, a4)
-      ENDDO
-
-      ! Fancy output
-      WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-
-      !### Debug
-      IF ( LPRT ) CALL DEBUG_MSG( '### READ_RESTART_FILE: read file' )
 
       ! Return to calling program
       END SUBROUTINE READ_RESTART_FILE
 
 !------------------------------------------------------------------------------
-      SUBROUTINE CHECK_DIMENSIONS( NI, NJ, NL )
-!
-!******************************************************************************
-!  Subroutine CHECK_DIMENSIONS makes sure that the dimensions of the
-!  restart file extend to cover the entire grid. (bmy, 6/25/02, 10/15/02)
-!
-!  Arguments as Input:
-!  ============================================================================
-!  (1 ) NI (INTEGER) : Number of longitudes read from restart file
-!  (2 ) NJ (INTEGER) : Number of latitudes  read from restart file
-!  (3 ) NL (INTEGER) : Numbef of levels     read from restart file
-!
-!  NOTES:
-!  (1 ) Added to "restart_mod.f".  Now no longer allow initialization with
-!        less than a globally-sized data block. (bmy, 6/25/02)
-!  (2 ) Now reference GEOS_CHEM_STOP from "error_mod.f", which frees all
-!        allocated memory before stopping the run. (bmy, 10/15/02)
-!******************************************************************************
-!
-      ! References to F90 modules
-      USE ERROR_MOD, ONLY : GEOS_CHEM_STOP
 
-      ! Arguments
-      INTEGER, INTENT(IN) :: NI, NJ, NL
-
-#     include "CMN_SIZE"
-
-      !=================================================================
-      ! CHECK_DIMENSIONS begins here!
-      !=================================================================
-
-      ! Error check longitude dimension: NI must equal IIPAR
-      IF ( NI /= IIPAR ) THEN
-         WRITE( 6, '(a)' ) 'ERROR reading in restart file!'
-         WRITE( 6, '(a)' ) 'Wrong number of longitudes encountered!'
-         WRITE( 6, '(a)' ) 'STOP in CHECK_DIMENSIONS (restart_mod.f)'
-         WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-         CALL GEOS_CHEM_STOP
-      ENDIF
-
-      ! Error check latitude dimension: NJ must equal JJPAR
-      IF ( NJ /= JJPAR ) THEN
-         WRITE( 6, '(a)' ) 'ERROR reading in restart file!'
-         WRITE( 6, '(a)' ) 'Wrong number of latitudes encountered!'
-         WRITE( 6, '(a)' ) 'STOP in CHECK_DIMENSIONS (restart_mod.f)'
-         WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-         CALL GEOS_CHEM_STOP
-      ENDIF
-
-      ! Error check vertical dimension: NL must equal LLPAR
-      IF ( NL /= LLPAR ) THEN
-         WRITE( 6, '(a)' ) 'ERROR reading in restart file!'
-         WRITE( 6, '(a)' ) 'Wrong number of levels encountered!'
-         WRITE( 6, '(a)' ) 'STOP in CHECK_DIMENSIONS (restart_mod.f)'
-         WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-         CALL GEOS_CHEM_STOP
-      ENDIF
-
-      ! Return to calling program
-      END SUBROUTINE CHECK_DIMENSIONS
-
-!------------------------------------------------------------------------------
-      SUBROUTINE CHECK_DATA_BLOCKS( NTRACE, NCOUNT )
-!
-!******************************************************************************
-!  Subroutine CHECK_DATA_BLOCKS checks to see if we have multiple or
-!  missing data blocks for a given tracer. (bmy, 6/25/02, 10/15/02)
-!
-!  Arguments as Input:
-!  ============================================================================
-!  (1 ) NTRACE (INTEGER) : Number of tracers
-!  (2 ) NCOUNT (INTEGER) : Ctr array - # of data blocks found per tracer
-!
-!  NOTES:
-!  (1 ) Added to "restart_mod.f".  Also now use F90 intrinsic REPEAT to
-!        write a long line of "="'s to the screen. (bmy, 6/25/02)
-!  (2 ) Now reference GEOS_CHEM_STOP from "error_mod.f", which frees all
-!        allocated memory before stopping the run. (bmy, 10/15/02)
-!******************************************************************************
-!
-      ! References to F90 modules
-      USE ERROR_MOD, ONLY : GEOS_CHEM_STOP
-
-
-#     include "CMN_SIZE"  ! Size parameters
-
-      ! Arguments
-      INTEGER, INTENT(IN) :: NTRACE, NCOUNT(NNPAR)
-
-      ! Local variables
-      INTEGER             :: N
-
-      !=================================================================
-      ! CHECK_DATA_BLOCKS begins here!
-      !=================================================================
-
-      ! Loop over all tracers
-      DO N = 1, NTRACE
-
-         ! Stop if a tracer has more than one data block
-         IF ( NCOUNT(N) > 1 ) THEN
-            WRITE( 6, 100 ) N
-            WRITE( 6, 120 )
-            WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-            CALL GEOS_CHEM_STOP
-         ENDIF
-
-         ! Stop if a tracer has no data blocks
-         IF ( NCOUNT(N) == 0 ) THEN
-            WRITE( 6, 110 ) N
-            WRITE( 6, 120 )
-            WRITE( 6, '(a)' ) REPEAT( '=', 79 )
-            CALL GEOS_CHEM_STOP
-         ENDIF
-      ENDDO
-
-      ! FORMAT statements
- 100  FORMAT( 'More than one record found for tracer : ', i4 )
- 110  FORMAT( 'No records found for tracer : ',           i4 )
- 120  FORMAT( 'STOP in CHECK_DATA_BLOCKS (restart_mod.f)'    )
-
-      ! Return to calling program
-      END SUBROUTINE CHECK_DATA_BLOCKS
-
-!------------------------------------------------------------------------------
-
-      SUBROUTINE SET_RESTART( INFILE, OUTFILE )
-!
-!******************************************************************************
-!  Subroutine SET_RESTART initializes the variables INPUT_RESTART_FILE and
-!  OUTPUT_RESTART_FILE with the values read from the "input.geos" file.
-!  (bmy, 7/9/04)
-!
-!  Arguments as Input:
-!  ============================================================================
-!  (1 ) INFILE  (CHAR*255) : Input restart file name from "input.geos"
-!  (2 ) OUTFILE (CHAR*255) : Output restart file name from "input.geos"
-!
-!  NOTES:
-!******************************************************************************
-!
-      ! Arguments
-      CHARACTER(LEN=255) :: INFILE, OUTFILE
-
-      !=================================================================
-      ! SET_RESTART begins here
-      !=================================================================
-      INPUT_RESTART_FILE  = INFILE
-      OUTPUT_RESTART_FILE = OUTFILE
-
-      ! Return to calling program
-      END SUBROUTINE SET_RESTART
-
-!------------------------------------------------------------------------------
+      END MODULE RESTART_MOD

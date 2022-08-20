@@ -1,4 +1,7 @@
 #!/bin/bash
 
 cp ../code/restart_bpch.exe .
+
+ulimit
+
 ./restart_bpch.exe
